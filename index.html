@@ -51,6 +51,43 @@
   }
   #names input:focus{ border-bottom-color:var(--wine); }
   #names .heart{ color:var(--wine); font-size:18px; }
+  .anniv-bar{
+    display:flex; align-items:center; justify-content:center; gap:10px; flex-wrap:wrap;
+    margin-top:14px;
+  }
+  .anniv-chip{
+    font-family:'Space Mono', monospace; font-size:12px; color:var(--ink-soft);
+    background:rgba(107,39,55,0.07); border:1px solid var(--line); border-radius:20px;
+    padding:5px 12px;
+  }
+  .anniv-set, .anniv-edit{
+    font-family:'Space Mono', monospace; font-size:11px; color:var(--wine);
+    background:none; border:1px dashed var(--gold); border-radius:20px;
+    padding:5px 12px; cursor:pointer;
+  }
+  .anniv-edit{ border-style:solid; opacity:0.5; padding:5px 9px; }
+  .anniv-edit:hover{ opacity:1; }
+  .anniv-bar input[type=date]{
+    font-family:'Space Mono', monospace; font-size:12px; color:var(--ink);
+    border:1px solid var(--line); border-radius:20px; padding:4px 10px; background:#fff;
+  }
+  .viewer-picker{
+    display:flex; align-items:center; justify-content:center; gap:6px; flex-wrap:wrap;
+    margin-top:10px; font-family:'Space Mono', monospace; font-size:11px; color:var(--ink-soft);
+  }
+  .viewer-chip{
+    font-family:'Space Mono', monospace; font-size:11px; color:var(--ink-soft);
+    background:#fff; border:1px solid var(--line); border-radius:14px; padding:4px 11px; cursor:pointer;
+  }
+  .viewer-chip.sel{ border-color:var(--wine); color:var(--wine); background:rgba(107,39,55,0.08); }
+  .reactions-row{ display:flex; gap:6px; flex-wrap:wrap; margin-top:12px; }
+  .reaction-chip{
+    font-size:13px; line-height:1; background:#fff; border:1px solid var(--line);
+    border-radius:14px; padding:5px 9px; cursor:pointer; display:inline-flex; align-items:center; gap:4px;
+    font-family:'Space Mono', monospace; color:var(--ink-soft); opacity:0.55;
+  }
+  .reaction-chip.active{ opacity:1; }
+  .reaction-chip.mine{ border-color:var(--wine); background:rgba(107,39,55,0.08); color:var(--wine); }
   .syncdot{
     display:inline-block; width:7px; height:7px; border-radius:50%;
     background:var(--sage); margin-right:6px; vertical-align:1px;
@@ -179,6 +216,8 @@
     <span class="heart">♥</span>
     <input id="name2" placeholder="Người thứ hai" maxlength="18">
   </div>
+  <div class="anniv-bar" id="annivBar"></div>
+  <div class="viewer-picker" id="viewerPicker"></div>
 </header>
 
 <div class="toolbar">
@@ -243,20 +282,12 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
 import {
-  getFirestore, collection, doc, addDoc, deleteDoc, setDoc, onSnapshot, serverTimestamp
+  getFirestore, collection, doc, addDoc, deleteDoc, setDoc, updateDoc, onSnapshot, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
 import {
   getStorage, ref, uploadString, getDownloadURL, deleteObject
 } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-storage.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyBlyMVAHz81gb18UgzdcNdO_4F8RuXTvc8",
-  authDomain: "nhat-ki-ne.firebaseapp.com",
-  projectId: "nhat-ki-ne",
-  storageBucket: "nhat-ki-ne.firebasestorage.app",
-  messagingSenderId: "503404969207",
-  appId: "1:503404969207:web:c7bd3413072be3f994e7f2"
-};
+import { firebaseConfig } from "./firebase-config.js";
 
 const isConfigured = true;
 if(!isConfigured){
@@ -271,9 +302,12 @@ if(isConfigured){
 }
 
 const MOODS = ['🥰','😂','🥹','😌','🎉','🌧️','✨','💌'];
+const REACTIONS = ['❤️','😭','🥰','👏','🔥','😂'];
 let entries = [];
 let selectedMood = MOODS[0];
 let currentPhoto = null;
+let viewer = localStorage.getItem('nk_viewer') || '';
+let metaStartDate = null;
 
 const board = document.getElementById('board');
 const overlay = document.getElementById('overlay');
@@ -305,6 +339,7 @@ let nameTimer;
 [name1,name2].forEach(inp=>{
   inp.addEventListener('input', ()=>{
     renderAuthorOptions();
+    renderViewerPicker();
     if(!isConfigured) return;
     clearTimeout(nameTimer);
     nameTimer = setTimeout(async ()=>{
@@ -314,6 +349,94 @@ let nameTimer;
     }, 500);
   });
 });
+
+function renderReactions(entry){
+  const reactions = entry.reactions || [];
+  return '<div class="reactions-row">' + REACTIONS.map(emoji=>{
+    const byList = reactions.filter(r=>r.emoji===emoji).map(r=>r.by);
+    const mine = viewer && byList.includes(viewer);
+    const active = byList.length > 0;
+    return `<button class="reaction-chip${active?' active':''}${mine?' mine':''}" data-id="${entry.id}" data-emoji="${emoji}">${emoji}${byList.length ? ' '+byList.length : ''}</button>`;
+  }).join('') + '</div>';
+}
+
+async function toggleReaction(entryId, emoji){
+  if(!viewer){
+    alert('Chọn bạn là ai ở phía trên đầu trang trước đã, rồi mới thả cảm xúc được nhé.');
+    return;
+  }
+  const entry = entries.find(e=>e.id===entryId);
+  if(!entry) return;
+  const current = entry.reactions || [];
+  const exists = current.some(r=>r.emoji===emoji && r.by===viewer);
+  const updated = exists
+    ? current.filter(r=>!(r.emoji===emoji && r.by===viewer))
+    : [...current, {emoji, by: viewer}];
+  try{
+    await updateDoc(doc(db,'entries', entryId), { reactions: updated });
+  }catch(e){ console.error(e); }
+}
+
+function renderViewerPicker(){
+  const wrap = document.getElementById('viewerPicker');
+  const n1 = name1.value.trim(), n2 = name2.value.trim();
+  const opts = [n1, n2].filter(Boolean);
+  if(opts.length === 0){ wrap.innerHTML = ''; return; }
+  if(viewer && !opts.includes(viewer)){ viewer = ''; localStorage.removeItem('nk_viewer'); }
+  wrap.innerHTML = '<span>Bạn là:</span>' + opts.map(o=>
+    `<button class="viewer-chip${o===viewer?' sel':''}" data-name="${escapeHtml(o)}">${escapeHtml(o)}</button>`
+  ).join('');
+  wrap.querySelectorAll('.viewer-chip').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      viewer = btn.getAttribute('data-name');
+      localStorage.setItem('nk_viewer', viewer);
+      renderViewerPicker();
+      renderBoard();
+    });
+  });
+}
+
+function daysBetween(a, b){ return Math.round((b - a) / 86400000); }
+
+function renderAnnivBar(){
+  const wrap = document.getElementById('annivBar');
+  if(!metaStartDate){
+    wrap.innerHTML = `<button class="anniv-set" id="setStartBtn">+ đặt ngày bắt đầu yêu nhau</button>`;
+    document.getElementById('setStartBtn').addEventListener('click', openStartDateEditor);
+    return;
+  }
+  const [sy, sm, sd] = metaStartDate.split('-').map(Number);
+  const start = new Date(sy, sm - 1, sd);
+  const today = new Date(); today.setHours(0,0,0,0);
+  const streak = daysBetween(start, today);
+  let next = new Date(today.getFullYear(), sm - 1, sd);
+  if(next < today) next = new Date(today.getFullYear() + 1, sm - 1, sd);
+  const toAnniv = daysBetween(today, next);
+  const annivText = toAnniv === 0 ? '🎉 Hôm nay là kỷ niệm của hai người!' : `🎂 còn ${toAnniv} ngày tới kỷ niệm`;
+  wrap.innerHTML = `
+    <span class="anniv-chip">❤️ ${streak} ngày bên nhau</span>
+    <span class="anniv-chip">${annivText}</span>
+    <button class="anniv-edit" id="editStartBtn">sửa</button>
+  `;
+  document.getElementById('editStartBtn').addEventListener('click', openStartDateEditor);
+}
+
+function openStartDateEditor(){
+  const wrap = document.getElementById('annivBar');
+  wrap.innerHTML = `
+    <input type="date" id="startDateInput" value="${metaStartDate || ''}">
+    <button class="anniv-set" id="saveStartBtn">lưu</button>
+  `;
+  document.getElementById('saveStartBtn').addEventListener('click', async ()=>{
+    const val = document.getElementById('startDateInput').value;
+    if(!val) return;
+    metaStartDate = val;
+    try{
+      await setDoc(doc(db,'meta','names'), {startDate: val}, {merge:true});
+    }catch(e){ console.error(e); }
+    renderAnnivBar();
+  });
+}
 
 function renderBoard(){
   countStat.textContent = entries.length + ' kỷ niệm đã lưu';
@@ -333,8 +456,17 @@ function renderBoard(){
       <div class="card-title">${escapeHtml(e.title)} <span class="card-mood">${e.mood||''}</span></div>
       ${e.photoUrl ? `<img class="card-photo" src="${e.photoUrl}" alt="Ảnh kỷ niệm: ${escapeHtml(e.title)}">` : ''}
       <div class="card-content">${escapeHtml(e.content)}</div>
+      ${renderReactions(e)}
     </div>
   `).join('');
+
+  board.querySelectorAll('.reaction-chip').forEach(btn=>{
+    btn.addEventListener('click', (ev)=>{
+      const id = ev.currentTarget.getAttribute('data-id');
+      const emoji = ev.currentTarget.getAttribute('data-emoji');
+      toggleReaction(id, emoji);
+    });
+  });
 
   board.querySelectorAll('.card-del').forEach(btn=>{
     btn.addEventListener('click', async (ev)=>{
@@ -487,7 +619,12 @@ if(isConfigured){
       const v = snap.data();
       if(document.activeElement !== name1) name1.value = v.name1 || '';
       if(document.activeElement !== name2) name2.value = v.name2 || '';
+      metaStartDate = v.startDate || null;
       renderAuthorOptions();
+      renderViewerPicker();
+      renderAnnivBar();
+    }else{
+      renderAnnivBar();
     }
   });
 }else{
