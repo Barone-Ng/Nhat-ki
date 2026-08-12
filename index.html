@@ -80,6 +80,8 @@
     background:#fff; border:1px solid var(--line); border-radius:14px; padding:4px 11px; cursor:pointer;
   }
   .viewer-chip.sel{ border-color:var(--wine); color:var(--wine); background:rgba(107,39,55,0.08); }
+  .viewer-picker-inline{ display:flex; gap:8px; flex-wrap:wrap; }
+  .viewer-picker-inline .viewer-chip{ font-size:14px; padding:7px 16px; }
   .reactions-row{ display:flex; gap:6px; flex-wrap:wrap; margin-top:12px; }
   .reaction-chip{
     font-size:13px; line-height:1; background:#fff; border:1px solid var(--line);
@@ -231,21 +233,18 @@
   <div class="modal">
     <h2>Một kỷ niệm mới</h2>
     <div class="field">
+      <label>Bạn là</label>
+      <div class="viewer-picker-inline" id="modalViewerPicker"></div>
+      <div class="err" id="errViewer">Chọn bạn là ai đã nhé.</div>
+    </div>
+    <div class="field">
       <label>Tiêu đề</label>
       <input type="text" id="fTitle" placeholder="Ví dụ: Lần đầu đi mưa cùng nhau">
       <div class="err" id="errTitle">Điền tiêu đề nhé.</div>
     </div>
-    <div class="row2">
-      <div class="field">
-        <label>Ngày</label>
-        <input type="date" id="fDate">
-      </div>
-      <div class="field">
-        <label>Người viết</label>
-        <select id="fAuthor">
-          <option value="">— chọn —</option>
-        </select>
-      </div>
+    <div class="field">
+      <label>Ngày</label>
+      <input type="date" id="fDate">
     </div>
     <div class="field">
       <label>Ảnh (không bắt buộc)</label>
@@ -329,16 +328,9 @@ function formatDate(iso){
   return `${d}.${m}.${y}`;
 }
 
-function renderAuthorOptions(){
-  const sel = document.getElementById('fAuthor');
-  const opts = [name1.value.trim(), name2.value.trim()].filter(Boolean);
-  sel.innerHTML = '<option value="">— chọn —</option>' + opts.map(o=>`<option value="${escapeHtml(o)}">${escapeHtml(o)}</option>`).join('');
-}
-
 let nameTimer;
 [name1,name2].forEach(inp=>{
   inp.addEventListener('input', ()=>{
-    renderAuthorOptions();
     renderViewerPicker();
     if(!isConfigured) return;
     clearTimeout(nameTimer);
@@ -378,43 +370,70 @@ async function toggleReaction(entryId, emoji){
 }
 
 function renderViewerPicker(){
-  const wrap = document.getElementById('viewerPicker');
   const n1 = name1.value.trim(), n2 = name2.value.trim();
   const opts = [n1, n2].filter(Boolean);
-  if(opts.length === 0){ wrap.innerHTML = ''; return; }
   if(viewer && !opts.includes(viewer)){ viewer = ''; localStorage.removeItem('nk_viewer'); }
-  wrap.innerHTML = '<span>Bạn là:</span>' + opts.map(o=>
-    `<button class="viewer-chip${o===viewer?' sel':''}" data-name="${escapeHtml(o)}">${escapeHtml(o)}</button>`
-  ).join('');
-  wrap.querySelectorAll('.viewer-chip').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      viewer = btn.getAttribute('data-name');
-      localStorage.setItem('nk_viewer', viewer);
-      renderViewerPicker();
-      renderBoard();
+
+  document.querySelectorAll('.viewer-picker, .viewer-picker-inline').forEach(wrap=>{
+    if(opts.length === 0){ wrap.innerHTML = ''; return; }
+    const showLabel = !wrap.classList.contains('viewer-picker-inline');
+    wrap.innerHTML = (showLabel ? '<span>Bạn là:</span>' : '') + opts.map(o=>
+      `<button type="button" class="viewer-chip${o===viewer?' sel':''}" data-name="${escapeHtml(o)}">${escapeHtml(o)}</button>`
+    ).join('');
+    wrap.querySelectorAll('.viewer-chip').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        viewer = btn.getAttribute('data-name');
+        localStorage.setItem('nk_viewer', viewer);
+        document.getElementById('errViewer').style.display = 'none';
+        renderViewerPicker();
+        renderBoard();
+      });
     });
   });
 }
 
 function daysBetween(a, b){ return Math.round((b - a) / 86400000); }
 
+function toDateStr(d){
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function computeWritingStreak(){
+  const daysSet = new Set(entries.map(e=>e.date).filter(Boolean));
+  let cursor = new Date(); cursor.setHours(0,0,0,0);
+  // if nothing written today yet, streak still counts as long as yesterday was written —
+  // it just needs an entry today to not break.
+  if(!daysSet.has(toDateStr(cursor))){
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  let streak = 0;
+  while(daysSet.has(toDateStr(cursor))){
+    streak++;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  return streak;
+}
+
 function renderAnnivBar(){
   const wrap = document.getElementById('annivBar');
+  const streak = computeWritingStreak();
+  const streakChip = `<span class="anniv-chip">🔥 ${streak} ngày liên tục viết nhật ký</span>`;
   if(!metaStartDate){
-    wrap.innerHTML = `<button class="anniv-set" id="setStartBtn">+ đặt ngày bắt đầu yêu nhau</button>`;
+    wrap.innerHTML = streakChip + `<button class="anniv-set" id="setStartBtn">+ đặt ngày bắt đầu yêu nhau</button>`;
     document.getElementById('setStartBtn').addEventListener('click', openStartDateEditor);
     return;
   }
   const [sy, sm, sd] = metaStartDate.split('-').map(Number);
   const start = new Date(sy, sm - 1, sd);
   const today = new Date(); today.setHours(0,0,0,0);
-  const streak = daysBetween(start, today);
+  const daysTogether = daysBetween(start, today);
   let next = new Date(today.getFullYear(), sm - 1, sd);
   if(next < today) next = new Date(today.getFullYear() + 1, sm - 1, sd);
   const toAnniv = daysBetween(today, next);
   const annivText = toAnniv === 0 ? '🎉 Hôm nay là kỷ niệm của hai người!' : `🎂 còn ${toAnniv} ngày tới kỷ niệm`;
   wrap.innerHTML = `
-    <span class="anniv-chip">❤️ ${streak} ngày bên nhau</span>
+    ${streakChip}
+    <span class="anniv-chip">❤️ ${daysTogether} ngày bên nhau</span>
     <span class="anniv-chip">${annivText}</span>
     <button class="anniv-edit" id="editStartBtn">sửa</button>
   `;
@@ -552,12 +571,13 @@ function openModal(){
   document.getElementById('errTitle').style.display = 'none';
   document.getElementById('errContent').style.display = 'none';
   document.getElementById('errPhoto').style.display = 'none';
+  document.getElementById('errViewer').style.display = 'none';
   document.getElementById('fPhoto').value = '';
   document.getElementById('photoPreviewWrap').style.display = 'none';
   currentPhoto = null;
   selectedMood = MOODS[0];
   renderMoodPicker();
-  renderAuthorOptions();
+  renderViewerPicker();
   overlay.classList.add('open');
 }
 function closeModal(){ overlay.classList.remove('open'); }
@@ -570,9 +590,11 @@ saveBtn.addEventListener('click', async ()=>{
   const title = document.getElementById('fTitle').value.trim();
   const content = document.getElementById('fContent').value.trim();
   const date = document.getElementById('fDate').value;
-  const author = document.getElementById('fAuthor').value;
+  const author = viewer;
 
   let ok = true;
+  if(!viewer){ document.getElementById('errViewer').style.display='block'; ok=false; }
+  else { document.getElementById('errViewer').style.display='none'; }
   if(!title){ document.getElementById('errTitle').style.display='block'; ok=false; }
   else { document.getElementById('errTitle').style.display='none'; }
   if(!content){ document.getElementById('errContent').style.display='block'; ok=false; }
@@ -607,6 +629,7 @@ if(isConfigured){
   onSnapshot(collection(db,'entries'), (snap)=>{
     entries = snap.docs.map(d=>({id: d.id, ...d.data()}));
     renderBoard();
+    renderAnnivBar();
     syncDot.classList.remove('off');
     syncLabel.textContent = 'đã đồng bộ';
   }, (err)=>{
@@ -620,7 +643,6 @@ if(isConfigured){
       if(document.activeElement !== name1) name1.value = v.name1 || '';
       if(document.activeElement !== name2) name2.value = v.name2 || '';
       metaStartDate = v.startDate || null;
-      renderAuthorOptions();
       renderViewerPicker();
       renderAnnivBar();
     }else{
