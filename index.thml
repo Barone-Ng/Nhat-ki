@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nhật Ký Đôi Ta</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;1,500&family=Lora:wght@400;500&family=Caveat:wght@500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F2E8D8;
+    --paper-card:#FBF4E7;
+    --paper-dark:#E4D5BC;
+    --ink:#2E2620;
+    --ink-soft:#5B5044;
+    --wine:#6B2737;
+    --wine-dark:#4E1C29;
+    --sage:#6E7F5C;
+    --gold:#B08D57;
+    --line: rgba(46,38,32,0.14);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(circle at 20% 10%, rgba(107,39,55,0.05), transparent 40%),
+      radial-gradient(circle at 85% 30%, rgba(110,127,92,0.06), transparent 45%),
+      var(--paper);
+    color:var(--ink);
+    font-family:'Lora', serif;
+    min-height:100vh;
+    padding:0 0 80px;
+  }
+  header{ text-align:center; padding:56px 20px 28px; position:relative; }
+  header .eyebrow{
+    font-family:'Space Mono', monospace; font-size:12px; letter-spacing:2px;
+    text-transform:uppercase; color:var(--wine);
+  }
+  h1{
+    font-family:'Playfair Display', serif; font-style:italic; font-weight:600;
+    font-size:42px; margin:8px 0 4px; color:var(--ink);
+  }
+  #names{
+    font-family:'Caveat', cursive; font-size:26px; color:var(--wine);
+    display:flex; align-items:center; justify-content:center; gap:10px; flex-wrap:wrap;
+  }
+  #names input{
+    font-family:'Caveat', cursive; font-size:26px; color:var(--wine); background:transparent;
+    border:none; border-bottom:1.5px dashed var(--gold); text-align:center; width:140px;
+    outline:none; padding:2px 4px;
+  }
+  #names input:focus{ border-bottom-color:var(--wine); }
+  #names .heart{ color:var(--wine); font-size:18px; }
+  .syncdot{
+    display:inline-block; width:7px; height:7px; border-radius:50%;
+    background:var(--sage); margin-right:6px; vertical-align:1px;
+  }
+  .syncdot.off{ background:#B4523F; }
+  .toolbar{
+    max-width:920px; margin:0 auto; padding:0 20px; display:flex;
+    justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap;
+  }
+  .stat{ font-family:'Space Mono', monospace; font-size:12px; color:var(--ink-soft); }
+  #addBtn{
+    font-family:'Lora', serif; font-weight:500; font-size:15px; background:var(--wine);
+    color:var(--paper-card); border:none; padding:11px 22px; border-radius:3px; cursor:pointer;
+    letter-spacing:0.3px; box-shadow:2px 2px 0 var(--wine-dark); transition:transform .12s ease, box-shadow .12s ease;
+  }
+  #addBtn:hover{ transform:translate(-1px,-1px); box-shadow:3px 3px 0 var(--wine-dark); }
+  #addBtn:active{ transform:translate(1px,1px); box-shadow:0 0 0 var(--wine-dark); }
+  #board{ max-width:920px; margin:32px auto 0; padding:0 20px; column-count:2; column-gap:22px; }
+  @media (max-width:640px){ #board{ column-count:1; } }
+  .card{
+    break-inside:avoid; background:var(--paper-card); border:1px solid var(--line); border-radius:2px;
+    padding:20px 22px 18px; margin-bottom:22px; position:relative;
+    box-shadow:0 1px 0 rgba(0,0,0,0.03), 0 6px 14px -10px rgba(46,38,32,0.35);
+  }
+  .tape{
+    position:absolute; top:-10px; left:50%; transform:translateX(-50%) rotate(-2deg);
+    width:70px; height:22px; background:rgba(176,141,87,0.35);
+    border-left:1px dashed rgba(176,141,87,0.6); border-right:1px dashed rgba(176,141,87,0.6);
+  }
+  .card-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:6px; }
+  .card-date{ font-family:'Space Mono', monospace; font-size:11px; color:var(--sage); letter-spacing:0.5px; }
+  .card-author{
+    font-family:'Space Mono', monospace; font-size:11px; color:var(--wine);
+    background:rgba(107,39,55,0.08); padding:2px 8px; border-radius:10px;
+  }
+  .card-title{ font-family:'Caveat', cursive; font-weight:700; font-size:26px; color:var(--ink); margin:4px 0 6px; line-height:1.1; }
+  .card-mood{ font-size:16px; margin-left:4px; }
+  .card-content{ font-size:15px; line-height:1.65; color:var(--ink-soft); white-space:pre-wrap; }
+  .card-photo{ width:100%; display:block; border-radius:2px; margin:2px 0 12px; cursor:zoom-in; border:1px solid var(--line); }
+  .card-del{
+    position:absolute; top:14px; right:14px; background:none; border:none; color:var(--ink-soft);
+    opacity:0.35; cursor:pointer; font-family:'Space Mono', monospace; font-size:12px; padding:2px 6px;
+  }
+  .card-del:hover{ opacity:1; color:var(--wine); }
+  .empty{ text-align:center; padding:60px 20px; color:var(--ink-soft); }
+  .empty .big{ font-family:'Caveat', cursive; font-size:28px; color:var(--wine); display:block; margin-bottom:6px; }
+  .overlay{
+    position:fixed; inset:0; background:rgba(46,38,32,0.45); display:none;
+    align-items:center; justify-content:center; padding:20px; z-index:50;
+  }
+  .overlay.open{ display:flex; }
+  .modal{
+    background:var(--paper-card); width:100%; max-width:460px; border-radius:4px;
+    padding:26px 26px 22px; box-shadow:0 20px 50px rgba(0,0,0,0.3); max-height:88vh; overflow-y:auto;
+  }
+  .modal h2{ font-family:'Playfair Display', serif; font-style:italic; font-weight:600; font-size:24px; margin:0 0 18px; }
+  .field{ margin-bottom:14px; }
+  .field label{
+    display:block; font-family:'Space Mono', monospace; font-size:11px; letter-spacing:0.5px;
+    text-transform:uppercase; color:var(--ink-soft); margin-bottom:6px;
+  }
+  .field input[type=text], .field input[type=date], .field textarea, .field select{
+    width:100%; font-family:'Lora', serif; font-size:15px; color:var(--ink); background:#fff;
+    border:1px solid var(--line); border-radius:3px; padding:9px 11px; outline:none;
+  }
+  .field input:focus, .field textarea:focus, .field select:focus{ border-color:var(--wine); }
+  .field textarea{ resize:vertical; min-height:90px; font-family:'Lora',serif; line-height:1.5; }
+  .row2{ display:flex; gap:12px; }
+  .row2 .field{ flex:1; }
+  .err{ color:var(--wine); font-size:12px; margin-top:4px; display:none; font-family:'Space Mono',monospace; }
+  .modal-actions{ display:flex; justify-content:flex-end; gap:10px; margin-top:6px; }
+  .btn-ghost{
+    background:none; border:1px solid var(--line); color:var(--ink-soft); padding:9px 16px;
+    border-radius:3px; cursor:pointer; font-family:'Lora', serif; font-size:14px;
+  }
+  .btn-solid{
+    background:var(--wine); border:none; color:var(--paper-card); padding:9px 18px;
+    border-radius:3px; cursor:pointer; font-family:'Lora', serif; font-size:14px;
+  }
+  .btn-solid:disabled{ opacity:0.6; cursor:default; }
+  .moods{ display:flex; gap:6px; flex-wrap:wrap; }
+  .mood-opt{
+    font-size:18px; background:#fff; border:1px solid var(--line); border-radius:4px;
+    width:38px; height:38px; cursor:pointer; display:flex; align-items:center; justify-content:center;
+  }
+  .mood-opt.sel{ border-color:var(--wine); background:rgba(107,39,55,0.08); }
+  .loading{ text-align:center; padding:40px; color:var(--ink-soft); font-family:'Space Mono',monospace; font-size:12px; }
+  .photo-field{
+    border:1.5px dashed var(--gold); border-radius:4px; padding:12px; text-align:center;
+    background:rgba(176,141,87,0.06); cursor:pointer;
+  }
+  .photo-field input{ display:none; }
+  .photo-field .hint{ font-family:'Space Mono', monospace; font-size:11px; color:var(--ink-soft); }
+  #photoPreviewWrap{ margin-top:10px; position:relative; display:none; }
+  #photoPreview{ width:100%; border-radius:4px; display:block; }
+  #removePhoto{
+    position:absolute; top:6px; right:6px; background:rgba(46,38,32,0.65); color:#fff; border:none;
+    border-radius:50%; width:24px; height:24px; cursor:pointer; font-family:'Space Mono', monospace;
+    font-size:12px; line-height:1;
+  }
+  .lightbox{
+    position:fixed; inset:0; background:rgba(20,16,12,0.86); display:none;
+    align-items:center; justify-content:center; padding:30px; z-index:60; cursor:zoom-out;
+  }
+  .lightbox.open{ display:flex; }
+  .lightbox img{ max-width:100%; max-height:100%; border-radius:3px; }
+  .setup-warning{
+    max-width:640px; margin:20px auto; background:#fff5f0; border:1px solid #d98a6b;
+    border-radius:6px; padding:16px 20px; font-size:13px; color:#7a3a1c; font-family:'Space Mono',monospace;
+    line-height:1.6; display:none;
+  }
+</style>
+</head>
+<body>
+
+<div class="setup-warning" id="setupWarning">
+  Chưa điền cấu hình Firebase. Mở file này bằng trình soạn thảo văn bản, tìm dòng
+  "const firebaseConfig" gần đầu thẻ &lt;script&gt; và điền thông tin project Firebase của bạn vào đó.
+</div>
+
+<header>
+  <div class="eyebrow"><span class="syncdot off" id="syncDot"></span><span id="syncLabel">đang kết nối...</span></div>
+  <h1>Nhật Ký Đôi Ta</h1>
+  <div id="names">
+    <input id="name1" placeholder="Người thứ nhất" maxlength="18">
+    <span class="heart">♥</span>
+    <input id="name2" placeholder="Người thứ hai" maxlength="18">
+  </div>
+</header>
+
+<div class="toolbar">
+  <span class="stat" id="countStat">đang tải...</span>
+  <button id="addBtn">+ Thêm kỷ niệm</button>
+</div>
+
+<div id="board"><div class="loading">đang mở cuốn nhật ký...</div></div>
+
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <h2>Một kỷ niệm mới</h2>
+    <div class="field">
+      <label>Tiêu đề</label>
+      <input type="text" id="fTitle" placeholder="Ví dụ: Lần đầu đi mưa cùng nhau">
+      <div class="err" id="errTitle">Điền tiêu đề nhé.</div>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>Ngày</label>
+        <input type="date" id="fDate">
+      </div>
+      <div class="field">
+        <label>Người viết</label>
+        <select id="fAuthor">
+          <option value="">— chọn —</option>
+        </select>
+      </div>
+    </div>
+    <div class="field">
+      <label>Ảnh (không bắt buộc)</label>
+      <label class="photo-field" id="photoDrop">
+        <span class="hint">Bấm để chọn ảnh — sẽ tự nén nhỏ lại</span>
+        <input type="file" id="fPhoto" accept="image/*">
+      </label>
+      <div id="photoPreviewWrap">
+        <img id="photoPreview" alt="Ảnh xem trước">
+        <button type="button" id="removePhoto" aria-label="Bỏ ảnh">x</button>
+      </div>
+      <div class="err" id="errPhoto">Ảnh vẫn quá nặng, thử ảnh khác nhé.</div>
+    </div>
+    <div class="field">
+      <label>Cảm xúc</label>
+      <div class="moods" id="moodPicker"></div>
+    </div>
+    <div class="field">
+      <label>Nội dung</label>
+      <textarea id="fContent" placeholder="Kể lại chuyện đã xảy ra..."></textarea>
+      <div class="err" id="errContent">Viết vài dòng nhé.</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-ghost" id="cancelBtn">Hủy</button>
+      <button class="btn-solid" id="saveBtn">Lưu kỷ niệm</button>
+    </div>
+  </div>
+</div>
+
+<div class="lightbox" id="lightbox">
+  <img id="lightboxImg" src="" alt="Ảnh phóng to">
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getFirestore, collection, doc, addDoc, deleteDoc, setDoc, onSnapshot, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import {
+  getStorage, ref, uploadString, getDownloadURL, deleteObject
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAvsC-rGWauQFgy45WHGaVSS0kKS4LA894",
+  authDomain: "nhat-ki-7362d.firebaseapp.com",
+  projectId: "nhat-ki-7362d",
+  storageBucket: "nhat-ki-7362d.firebasestorage.app",
+  messagingSenderId: "845405432641",
+  appId: "1:845405432641:web:45eb34239dc2b905a84fc0"
+};
+
+const isConfigured = true;
+if(!isConfigured){
+  document.getElementById('setupWarning').style.display = 'block';
+}
+
+let db, storage;
+if(isConfigured){
+  const app = initializeApp(firebaseConfig);
+  db = getFirestore(app);
+  storage = getStorage(app);
+}
+
+const MOODS = ['🥰','😂','🥹','😌','🎉','🌧️','✨','💌'];
+let entries = [];
+let selectedMood = MOODS[0];
+let currentPhoto = null;
+
+const board = document.getElementById('board');
+const overlay = document.getElementById('overlay');
+const countStat = document.getElementById('countStat');
+const name1 = document.getElementById('name1');
+const name2 = document.getElementById('name2');
+const syncDot = document.getElementById('syncDot');
+const syncLabel = document.getElementById('syncLabel');
+const saveBtn = document.getElementById('saveBtn');
+
+function escapeHtml(str){
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+function formatDate(iso){
+  if(!iso) return '';
+  const [y,m,d] = iso.split('-');
+  return `${d}.${m}.${y}`;
+}
+
+function renderAuthorOptions(){
+  const sel = document.getElementById('fAuthor');
+  const opts = [name1.value.trim(), name2.value.trim()].filter(Boolean);
+  sel.innerHTML = '<option value="">— chọn —</option>' + opts.map(o=>`<option value="${escapeHtml(o)}">${escapeHtml(o)}</option>`).join('');
+}
+
+let nameTimer;
+[name1,name2].forEach(inp=>{
+  inp.addEventListener('input', ()=>{
+    renderAuthorOptions();
+    if(!isConfigured) return;
+    clearTimeout(nameTimer);
+    nameTimer = setTimeout(async ()=>{
+      try{
+        await setDoc(doc(db,'meta','names'), {name1: name1.value, name2: name2.value}, {merge:true});
+      }catch(e){ console.error(e); }
+    }, 500);
+  });
+});
+
+function renderBoard(){
+  countStat.textContent = entries.length + ' kỷ niệm đã lưu';
+  if(entries.length === 0){
+    board.innerHTML = '<div class="empty"><span class="big">Trang còn trống...</span>Bắt đầu bằng kỷ niệm đầu tiên của hai người nhé.</div>';
+    return;
+  }
+  const sorted = [...entries].sort((a,b)=> (b.date||'').localeCompare(a.date||''));
+  board.innerHTML = sorted.map(e => `
+    <div class="card" data-id="${e.id}">
+      <div class="tape"></div>
+      <button class="card-del" data-id="${e.id}" title="Xóa">xóa</button>
+      <div class="card-top">
+        <span class="card-date">${formatDate(e.date)}</span>
+        ${e.author ? `<span class="card-author">${escapeHtml(e.author)}</span>` : ''}
+      </div>
+      <div class="card-title">${escapeHtml(e.title)} <span class="card-mood">${e.mood||''}</span></div>
+      ${e.photoUrl ? `<img class="card-photo" src="${e.photoUrl}" alt="Ảnh kỷ niệm: ${escapeHtml(e.title)}">` : ''}
+      <div class="card-content">${escapeHtml(e.content)}</div>
+    </div>
+  `).join('');
+
+  board.querySelectorAll('.card-del').forEach(btn=>{
+    btn.addEventListener('click', async (ev)=>{
+      const id = ev.currentTarget.getAttribute('data-id');
+      const entry = entries.find(e=>e.id===id);
+      try{
+        await deleteDoc(doc(db,'entries', id));
+        if(entry && entry.photoPath){
+          deleteObject(ref(storage, entry.photoPath)).catch(()=>{});
+        }
+      }catch(e){ console.error(e); }
+    });
+  });
+
+  board.querySelectorAll('.card-photo').forEach(img=>{
+    img.addEventListener('click', ()=>{
+      document.getElementById('lightboxImg').src = img.src;
+      lightbox.classList.add('open');
+    });
+  });
+}
+
+function compressImage(file, maxDim, quality){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        let w = img.width, h = img.height;
+        if(w > h && w > maxDim){ h = Math.round(h * maxDim / w); w = maxDim; }
+        else if(h > maxDim){ w = Math.round(w * maxDim / h); h = maxDim; }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = reject;
+      img.src = reader.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+document.getElementById('fPhoto').addEventListener('change', async (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  document.getElementById('errPhoto').style.display = 'none';
+  try{
+    const dataUrl = await compressImage(file, 1400, 0.8);
+    currentPhoto = dataUrl;
+    document.getElementById('photoPreview').src = dataUrl;
+    document.getElementById('photoPreviewWrap').style.display = 'block';
+  }catch(err){
+    document.getElementById('errPhoto').style.display = 'block';
+  }
+});
+
+document.getElementById('removePhoto').addEventListener('click', ()=>{
+  currentPhoto = null;
+  document.getElementById('fPhoto').value = '';
+  document.getElementById('photoPreviewWrap').style.display = 'none';
+});
+
+const lightbox = document.getElementById('lightbox');
+lightbox.addEventListener('click', ()=> lightbox.classList.remove('open'));
+
+function renderMoodPicker(){
+  const wrap = document.getElementById('moodPicker');
+  wrap.innerHTML = MOODS.map(m=>`<div class="mood-opt${m===selectedMood?' sel':''}" data-mood="${m}">${m}</div>`).join('');
+  wrap.querySelectorAll('.mood-opt').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      selectedMood = el.getAttribute('data-mood');
+      renderMoodPicker();
+    });
+  });
+}
+
+function openModal(){
+  document.getElementById('fTitle').value = '';
+  document.getElementById('fContent').value = '';
+  document.getElementById('fDate').value = new Date().toISOString().slice(0,10);
+  document.getElementById('errTitle').style.display = 'none';
+  document.getElementById('errContent').style.display = 'none';
+  document.getElementById('errPhoto').style.display = 'none';
+  document.getElementById('fPhoto').value = '';
+  document.getElementById('photoPreviewWrap').style.display = 'none';
+  currentPhoto = null;
+  selectedMood = MOODS[0];
+  renderMoodPicker();
+  renderAuthorOptions();
+  overlay.classList.add('open');
+}
+function closeModal(){ overlay.classList.remove('open'); }
+
+document.getElementById('addBtn').addEventListener('click', openModal);
+document.getElementById('cancelBtn').addEventListener('click', closeModal);
+overlay.addEventListener('click', (e)=>{ if(e.target === overlay) closeModal(); });
+
+saveBtn.addEventListener('click', async ()=>{
+  const title = document.getElementById('fTitle').value.trim();
+  const content = document.getElementById('fContent').value.trim();
+  const date = document.getElementById('fDate').value;
+  const author = document.getElementById('fAuthor').value;
+
+  let ok = true;
+  if(!title){ document.getElementById('errTitle').style.display='block'; ok=false; }
+  else { document.getElementById('errTitle').style.display='none'; }
+  if(!content){ document.getElementById('errContent').style.display='block'; ok=false; }
+  else { document.getElementById('errContent').style.display='none'; }
+  if(!ok) return;
+
+  saveBtn.disabled = true;
+  saveBtn.textContent = 'Đang lưu...';
+  try{
+    let photoUrl = null, photoPath = null;
+    if(currentPhoto){
+      const path = 'photos/' + Date.now() + '_' + Math.random().toString(36).slice(2,8) + '.jpg';
+      const storageRef = ref(storage, path);
+      await uploadString(storageRef, currentPhoto, 'data_url');
+      photoUrl = await getDownloadURL(storageRef);
+      photoPath = path;
+    }
+    await addDoc(collection(db,'entries'), {
+      title, content, date, author, mood: selectedMood,
+      photoUrl, photoPath, createdAt: serverTimestamp()
+    });
+    closeModal();
+  }catch(e){
+    console.error(e);
+    alert('Lưu thất bại, kiểm tra cấu hình Firebase và kết nối mạng.');
+  }
+  saveBtn.disabled = false;
+  saveBtn.textContent = 'Lưu kỷ niệm';
+});
+
+if(isConfigured){
+  onSnapshot(collection(db,'entries'), (snap)=>{
+    entries = snap.docs.map(d=>({id: d.id, ...d.data()}));
+    renderBoard();
+    syncDot.classList.remove('off');
+    syncLabel.textContent = 'đã đồng bộ';
+  }, (err)=>{
+    console.error(err);
+    syncLabel.textContent = 'lỗi kết nối, kiểm tra cấu hình';
+  });
+
+  onSnapshot(doc(db,'meta','names'), (snap)=>{
+    if(snap.exists()){
+      const v = snap.data();
+      if(document.activeElement !== name1) name1.value = v.name1 || '';
+      if(document.activeElement !== name2) name2.value = v.name2 || '';
+      renderAuthorOptions();
+    }
+  });
+}else{
+  board.innerHTML = '<div class="empty"><span class="big">Chưa kết nối Firebase</span>Điền cấu hình ở đầu file để bắt đầu dùng.</div>';
+  countStat.textContent = 'chưa kết nối';
+}
+</script>
+
+</body>
+</html>
