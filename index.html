@@ -201,6 +201,70 @@
     border-radius:6px; padding:16px 20px; font-size:13px; color:#7a3a1c; font-family:'Space Mono',monospace;
     line-height:1.6; display:none;
   }
+  .checkbox-label{
+    display:flex; align-items:center; gap:8px; font-family:'Lora',serif; font-size:14px;
+    color:var(--ink); cursor:pointer;
+  }
+  .checkbox-label input{ width:16px; height:16px; accent-color:var(--wine); cursor:pointer; }
+  .field-hint{ font-family:'Space Mono',monospace; font-size:11px; color:var(--ink-soft); margin-top:5px; }
+  .cowrite-parts{ display:flex; flex-direction:column; gap:12px; margin-top:2px; }
+  .cowrite-part{ border-left:3px solid var(--gold); padding-left:12px; }
+  .cowrite-author{
+    font-family:'Space Mono', monospace; font-size:11px; color:var(--wine);
+    display:block; margin-bottom:3px; letter-spacing:0.3px;
+  }
+  .cowrite-add{ margin-top:14px; border-top:1px dashed var(--line); padding-top:12px; }
+  .cowrite-add textarea{
+    width:100%; font-family:'Lora', serif; font-size:14px; color:var(--ink); background:#fff;
+    border:1px solid var(--line); border-radius:3px; padding:8px 10px; resize:vertical;
+    min-height:60px; margin-bottom:8px;
+  }
+  .cowrite-hint{ font-family:'Space Mono', monospace; font-size:11px; color:var(--ink-soft); margin-top:12px; font-style:italic; }
+  .cowrite-badge{ opacity:0.7; }
+  .recap-modal{ max-width:560px; }
+  .recap-grid{ display:grid; gap:4px; margin-bottom:20px; }
+  .recap-cell{
+    font-family:'Space Mono', monospace; font-size:11px; color:var(--ink-soft);
+    display:flex; align-items:center; justify-content:center; padding:6px 4px; text-align:center;
+  }
+  .recap-head{ font-weight:700; color:var(--wine); font-size:11px; }
+  .recap-daylabel{ justify-content:flex-start; color:var(--ink-soft); }
+  .recap-yes{ background:rgba(110,127,92,0.18); border-radius:4px; }
+  .recap-no{ background:rgba(180,82,63,0.08); border-radius:4px; color:#B4523F; }
+  .recap-stats{ display:flex; flex-direction:column; gap:14px; border-top:1px solid var(--line); padding-top:16px; }
+  .recap-person-name{ font-family:'Caveat', cursive; font-size:22px; color:var(--wine); margin-bottom:4px; }
+  .recap-stat-line{ font-family:'Space Mono', monospace; font-size:12px; color:var(--ink-soft); margin-bottom:3px; }
+  #confettiLayer{
+    position:fixed; inset:0; z-index:200; display:none;
+    align-items:center; justify-content:center; overflow:hidden; pointer-events:none;
+  }
+  #confettiLayer.open{ display:flex; pointer-events:auto; background:rgba(46,38,32,0.4); }
+  .confetti-piece{
+    position:absolute; top:-30px; will-change:transform;
+    animation-name: confetti-fall; animation-timing-function:linear; animation-fill-mode:forwards;
+  }
+  @keyframes confetti-fall{
+    0%{ transform:translateY(0) rotate(0deg); opacity:1; }
+    100%{ transform:translateY(110vh) rotate(540deg); opacity:0.9; }
+  }
+  .celebrate-card{
+    position:relative; background:var(--paper-card); border-radius:10px; padding:38px 40px;
+    text-align:center; box-shadow:0 25px 60px rgba(0,0,0,0.35);
+    animation: celebrate-pop 0.5s cubic-bezier(.34,1.56,.64,1);
+    max-width:340px;
+  }
+  @keyframes celebrate-pop{
+    0%{ transform:scale(0.5); opacity:0; }
+    70%{ transform:scale(1.08); opacity:1; }
+    100%{ transform:scale(1); opacity:1; }
+  }
+  .celebrate-emoji{ font-size:46px; margin-bottom:8px; animation: celebrate-bounce 1s ease-in-out infinite; }
+  @keyframes celebrate-bounce{ 0%,100%{ transform:translateY(0); } 50%{ transform:translateY(-8px); } }
+  .celebrate-title{
+    font-family:'Playfair Display', serif; font-style:italic; font-weight:600;
+    font-size:23px; color:var(--wine); margin-bottom:8px; line-height:1.3;
+  }
+  .celebrate-sub{ font-family:'Lora', serif; font-size:14px; color:var(--ink-soft); margin-bottom:20px; }
 </style>
 </head>
 <body>
@@ -224,7 +288,10 @@
 
 <div class="toolbar">
   <span class="stat" id="countStat">đang tải...</span>
-  <button id="addBtn">+ Thêm kỷ niệm</button>
+  <div style="display:flex; gap:10px; flex-wrap:wrap;">
+    <button id="recapBtn" class="btn-ghost">📊 Tổng kết tuần</button>
+    <button id="addBtn">+ Thêm kỷ niệm</button>
+  </div>
 </div>
 
 <div id="board"><div class="loading">đang mở cuốn nhật ký...</div></div>
@@ -263,6 +330,13 @@
       <div class="moods" id="moodPicker"></div>
     </div>
     <div class="field">
+      <label class="checkbox-label">
+        <input type="checkbox" id="fCoWrite">
+        Viết cùng nhau (mỗi người thêm một đoạn)
+      </label>
+      <div class="field-hint">Nếu bật, nội dung bên dưới là phần của bạn — người kia có thể thêm phần của họ vào cùng kỷ niệm này sau.</div>
+    </div>
+    <div class="field">
       <label>Nội dung</label>
       <textarea id="fContent" placeholder="Kể lại chuyện đã xảy ra..."></textarea>
       <div class="err" id="errContent">Viết vài dòng nhé.</div>
@@ -276,6 +350,16 @@
 
 <div class="lightbox" id="lightbox">
   <img id="lightboxImg" src="" alt="Ảnh phóng to">
+</div>
+
+<div class="overlay" id="recapOverlay">
+  <div class="modal recap-modal">
+    <h2>Tổng kết tuần này</h2>
+    <div id="recapContent"></div>
+    <div class="modal-actions">
+      <button class="btn-ghost" id="recapCloseBtn">Đóng</button>
+    </div>
+  </div>
 </div>
 
 <script type="module">
@@ -342,6 +426,40 @@ let nameTimer;
   });
 });
 
+function renderCoWriteContent(entry){
+  const parts = entry.parts || [];
+  let html = '<div class="cowrite-parts">' + parts.map(p => `
+    <div class="cowrite-part">
+      <span class="cowrite-author">${escapeHtml(p.by)}</span>
+      <div class="card-content">${escapeHtml(p.text)}</div>
+    </div>
+  `).join('') + '</div>';
+
+  const alreadyContributed = viewer && parts.some(p=>p.by===viewer);
+  if(parts.length < 2 && viewer && !alreadyContributed){
+    html += `
+      <div class="cowrite-add" data-id="${entry.id}">
+        <textarea class="cowrite-input" placeholder="Thêm phần của ${escapeHtml(viewer)}..."></textarea>
+        <button type="button" class="btn-solid cowrite-save" data-id="${entry.id}">Thêm phần của tôi</button>
+      </div>
+    `;
+  } else if(parts.length < 2){
+    html += `<div class="cowrite-hint">Đang chờ người kia viết thêm phần của họ...</div>`;
+  }
+  return html;
+}
+
+async function addCoWritePart(entryId, text){
+  const entry = entries.find(e=>e.id===entryId);
+  if(!entry || !viewer) return;
+  const parts = entry.parts || [];
+  if(parts.some(p=>p.by===viewer)) return;
+  const updated = [...parts, {by: viewer, text, at: new Date().toISOString()}];
+  try{
+    await updateDoc(doc(db,'entries', entryId), { parts: updated });
+  }catch(e){ console.error(e); }
+}
+
 function renderReactions(entry){
   const reactions = entry.reactions || [];
   return '<div class="reactions-row">' + REACTIONS.map(emoji=>{
@@ -363,7 +481,7 @@ async function toggleReaction(entryId, emoji){
   const exists = current.some(r=>r.emoji===emoji && r.by===viewer);
   const updated = exists
     ? current.filter(r=>!(r.emoji===emoji && r.by===viewer))
-    : [...current, {emoji, by: viewer}];
+    : [...current, {emoji, by: viewer, at: new Date().toISOString()}];
   try{
     await updateDoc(doc(db,'entries', entryId), { reactions: updated });
   }catch(e){ console.error(e); }
@@ -414,6 +532,72 @@ function computeWritingStreak(){
   return streak;
 }
 
+const MILESTONES_STREAK = [3,7,14,30,50,100,200,365,500,1000];
+const MILESTONES_TOGETHER = [7,30,50,100,200,365,500,730,1000,1500,2000,3000,5000,10000];
+
+function checkMilestoneFor(key, value, milestones, titleFn, subtitle){
+  if(!value) return;
+  const storageKey = 'nk_celebrated_' + key;
+  const lastCelebrated = Number(localStorage.getItem(storageKey) || 0);
+  const hit = milestones.filter(m => m <= value && m > lastCelebrated).sort((a,b)=>b-a)[0];
+  if(hit){
+    localStorage.setItem(storageKey, String(hit));
+    celebrate(titleFn(hit), subtitle);
+  }
+}
+
+function checkMilestones(streak, daysTogether){
+  checkMilestoneFor('streak', streak, MILESTONES_STREAK,
+    (n)=>`🔥 ${n} ngày liên tục viết nhật ký!`, 'Cứ giữ lửa như vậy nhé 💪');
+  if(daysTogether){
+    checkMilestoneFor('together', daysTogether, MILESTONES_TOGETHER,
+      (n)=>`❤️ ${n} ngày bên nhau!`, 'Chúc mừng cột mốc đáng nhớ của hai người 🥂');
+  }
+}
+
+function celebrate(title, subtitle){
+  let layer = document.getElementById('confettiLayer');
+  if(!layer){
+    layer = document.createElement('div');
+    layer.id = 'confettiLayer';
+    document.body.appendChild(layer);
+  }
+  layer.innerHTML = '';
+  layer.classList.add('open');
+
+  const colors = ['#6B2737','#B08D57','#6E7F5C','#E4A0A0','#F2C94C','#9B5DE5'];
+  const shapes = ['●','■','▲','♥'];
+  for(let i=0; i<90; i++){
+    const piece = document.createElement('span');
+    piece.className = 'confetti-piece';
+    piece.textContent = shapes[Math.floor(Math.random()*shapes.length)];
+    piece.style.left = Math.random()*100 + 'vw';
+    piece.style.color = colors[Math.floor(Math.random()*colors.length)];
+    piece.style.fontSize = (10 + Math.random()*16) + 'px';
+    piece.style.animationDuration = (2.5 + Math.random()*2.5) + 's';
+    piece.style.animationDelay = (Math.random()*0.7) + 's';
+    layer.appendChild(piece);
+  }
+
+  const card = document.createElement('div');
+  card.className = 'celebrate-card';
+  card.innerHTML = `
+    <div class="celebrate-emoji">🎉</div>
+    <div class="celebrate-title">${title}</div>
+    <div class="celebrate-sub">${subtitle}</div>
+    <button type="button" class="btn-solid celebrate-close">Tuyệt vời!</button>
+  `;
+  layer.appendChild(card);
+
+  const cleanup = ()=>{
+    layer.classList.remove('open');
+    layer.innerHTML = '';
+  };
+  card.querySelector('.celebrate-close').addEventListener('click', cleanup);
+  layer.addEventListener('click', (e)=>{ if(e.target === layer) cleanup(); });
+  setTimeout(cleanup, 7000);
+}
+
 function renderAnnivBar(){
   const wrap = document.getElementById('annivBar');
   const streak = computeWritingStreak();
@@ -421,6 +605,7 @@ function renderAnnivBar(){
   if(!metaStartDate){
     wrap.innerHTML = streakChip + `<button class="anniv-set" id="setStartBtn">+ đặt ngày bắt đầu yêu nhau</button>`;
     document.getElementById('setStartBtn').addEventListener('click', openStartDateEditor);
+    checkMilestones(streak, null);
     return;
   }
   const [sy, sm, sd] = metaStartDate.split('-').map(Number);
@@ -438,6 +623,7 @@ function renderAnnivBar(){
     <button class="anniv-edit" id="editStartBtn">sửa</button>
   `;
   document.getElementById('editStartBtn').addEventListener('click', openStartDateEditor);
+  checkMilestones(streak, daysTogether);
 }
 
 function openStartDateEditor(){
@@ -457,6 +643,77 @@ function openStartDateEditor(){
   });
 }
 
+const DOW_LABELS = ['CN','T2','T3','T4','T5','T6','T7'];
+
+function personWroteOn(entry, dateStr, person){
+  if(entry.date !== dateStr) return false;
+  return entry.coWrite ? (entry.parts || []).some(p => p.by === person) : entry.author === person;
+}
+
+function renderWeeklyRecap(){
+  const wrap = document.getElementById('recapContent');
+  const n1 = name1.value.trim(), n2 = name2.value.trim();
+  const people = [n1, n2].filter(Boolean);
+  if(people.length === 0){
+    wrap.innerHTML = '<p class="field-hint">Điền tên hai người ở đầu trang trước đã nhé.</p>';
+    return;
+  }
+
+  const today = new Date(); today.setHours(0,0,0,0);
+  const days = [];
+  for(let i = 6; i >= 0; i--){
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    days.push(d);
+  }
+  const weekStartStr = toDateStr(days[0]);
+  const weekEndStr = toDateStr(days[6]);
+
+  let gridHtml = `<div class="recap-grid" style="grid-template-columns: 62px repeat(${people.length}, 1fr);">`;
+  gridHtml += '<div class="recap-cell recap-head"></div>' + people.map(p => `<div class="recap-cell recap-head">${escapeHtml(p)}</div>`).join('');
+  days.forEach(d=>{
+    const ds = toDateStr(d);
+    const label = `${DOW_LABELS[d.getDay()]} ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`;
+    gridHtml += `<div class="recap-cell recap-daylabel">${label}</div>`;
+    people.forEach(p=>{
+      const wroteEntries = entries.filter(e => personWroteOn(e, ds, p));
+      const wrote = wroteEntries.length > 0;
+      const titleAttr = wrote ? escapeHtml(wroteEntries.map(x=>x.title).join(', ')) : 'Chưa viết';
+      gridHtml += `<div class="recap-cell ${wrote ? 'recap-yes' : 'recap-no'}" title="${titleAttr}">${wrote ? '✅' : '—'}</div>`;
+    });
+  });
+  gridHtml += '</div>';
+
+  const statsHtml = people.map(p=>{
+    const moodCounts = {};
+    let reactionCount = 0;
+    entries.forEach(e=>{
+      const inWeek = e.date >= weekStartStr && e.date <= weekEndStr;
+      if(inWeek && personWroteOn(e, e.date, p) && e.mood){
+        moodCounts[e.mood] = (moodCounts[e.mood] || 0) + 1;
+      }
+      (e.reactions || []).forEach(r=>{
+        if(r.by !== p || !r.at) return;
+        const rDate = r.at.slice(0,10);
+        if(rDate >= weekStartStr && rDate <= weekEndStr) reactionCount++;
+      });
+    });
+    const moodChips = Object.entries(moodCounts).sort((a,b)=>b[1]-a[1]).map(([m,c])=>`${m}×${c}`).join('  ') || '—';
+    const missingDays = days.filter(d => !entries.some(e => personWroteOn(e, toDateStr(d), p))).length;
+
+    return `
+      <div class="recap-person">
+        <div class="recap-person-name">${escapeHtml(p)}</div>
+        <div class="recap-stat-line">📅 Thiếu ${missingDays}/7 ngày viết</div>
+        <div class="recap-stat-line">🙂 Cảm xúc trong tuần: ${moodChips}</div>
+        <div class="recap-stat-line">💬 Đã thả ${reactionCount} lượt cảm xúc tuần này</div>
+      </div>
+    `;
+  }).join('');
+
+  wrap.innerHTML = gridHtml + `<div class="recap-stats">${statsHtml}</div>`;
+}
+
 function renderBoard(){
   countStat.textContent = entries.length + ' kỷ niệm đã lưu';
   if(entries.length === 0){
@@ -471,13 +728,24 @@ function renderBoard(){
       <div class="card-top">
         <span class="card-date">${formatDate(e.date)}</span>
         ${e.author ? `<span class="card-author">${escapeHtml(e.author)}</span>` : ''}
+        ${e.coWrite ? '<span class="card-author cowrite-badge">✍️ viết cùng nhau</span>' : ''}
       </div>
       <div class="card-title">${escapeHtml(e.title)} <span class="card-mood">${e.mood||''}</span></div>
       ${e.photoUrl ? `<img class="card-photo" src="${e.photoUrl}" alt="Ảnh kỷ niệm: ${escapeHtml(e.title)}">` : ''}
-      <div class="card-content">${escapeHtml(e.content)}</div>
+      ${e.coWrite ? renderCoWriteContent(e) : `<div class="card-content">${escapeHtml(e.content)}</div>`}
       ${renderReactions(e)}
     </div>
   `).join('');
+
+  board.querySelectorAll('.cowrite-save').forEach(btn=>{
+    btn.addEventListener('click', async (ev)=>{
+      const id = ev.currentTarget.getAttribute('data-id');
+      const wrap = ev.currentTarget.closest('.cowrite-add');
+      const text = wrap.querySelector('.cowrite-input').value.trim();
+      if(!text) return;
+      await addCoWritePart(id, text);
+    });
+  });
 
   board.querySelectorAll('.reaction-chip').forEach(btn=>{
     btn.addEventListener('click', (ev)=>{
@@ -564,10 +832,22 @@ function renderMoodPicker(){
   });
 }
 
+document.getElementById('recapBtn').addEventListener('click', ()=>{
+  renderWeeklyRecap();
+  document.getElementById('recapOverlay').classList.add('open');
+});
+document.getElementById('recapCloseBtn').addEventListener('click', ()=>{
+  document.getElementById('recapOverlay').classList.remove('open');
+});
+document.getElementById('recapOverlay').addEventListener('click', (e)=>{
+  if(e.target.id === 'recapOverlay') document.getElementById('recapOverlay').classList.remove('open');
+});
+
 function openModal(){
   document.getElementById('fTitle').value = '';
   document.getElementById('fContent').value = '';
   document.getElementById('fDate').value = new Date().toISOString().slice(0,10);
+  document.getElementById('fCoWrite').checked = false;
   document.getElementById('errTitle').style.display = 'none';
   document.getElementById('errContent').style.display = 'none';
   document.getElementById('errPhoto').style.display = 'none';
@@ -612,10 +892,18 @@ saveBtn.addEventListener('click', async ()=>{
       photoUrl = await getDownloadURL(storageRef);
       photoPath = path;
     }
-    await addDoc(collection(db,'entries'), {
-      title, content, date, author, mood: selectedMood,
-      photoUrl, photoPath, createdAt: serverTimestamp()
-    });
+    const coWrite = document.getElementById('fCoWrite').checked;
+    const baseDoc = {
+      title, date, author, mood: selectedMood,
+      photoUrl, photoPath, createdAt: serverTimestamp(), coWrite
+    };
+    if(coWrite){
+      baseDoc.parts = [{ by: author, text: content, at: new Date().toISOString() }];
+      baseDoc.content = '';
+    }else{
+      baseDoc.content = content;
+    }
+    await addDoc(collection(db,'entries'), baseDoc);
     closeModal();
   }catch(e){
     console.error(e);
