@@ -348,9 +348,9 @@
   <div class="eyebrow"><span class="syncdot off" id="syncDot"></span><span id="syncLabel">đang kết nối...</span></div>
   <h1>Nhật Ký Đôi Ta</h1>
   <div id="names">
-    <input id="name1" placeholder="Người thứ nhất" maxlength="18">
+    <input id="name1" placeholder="Người thứ nhất" maxlength="18" value="Barone">
     <span class="heart">♥</span>
-    <input id="name2" placeholder="Người thứ hai" maxlength="18">
+    <input id="name2" placeholder="Người thứ hai" maxlength="18" value="Tí Èn">
   </div>
   <div class="anniv-bar" id="annivBar"></div>
   <div class="viewer-picker" id="viewerPicker"></div>
@@ -454,6 +454,8 @@ if(isConfigured){
   storage = getStorage(app);
 }
 
+const DEFAULT_NAME1 = 'Barone';
+const DEFAULT_NAME2 = 'Tí Èn';
 const MOODS = ['🥰','😂','🥹','😌','🎉','🌧️','✨','💌'];
 const REACTIONS = ['❤️','😭','🥰','👏','🔥','😂'];
 let entries = [];
@@ -809,8 +811,8 @@ function renderBoard(){
     return;
   }
 
-  const n1 = name1.value.trim() || 'Người thứ nhất';
-  const n2 = name2.value.trim() || 'Người thứ hai';
+  const n1 = name1.value.trim() || DEFAULT_NAME1;
+  const n2 = name2.value.trim() || DEFAULT_NAME2;
 
   // group entries by date (unset dates land in their own trailing group)
   const byDate = {};
@@ -826,7 +828,9 @@ function renderBoard(){
     const coWriteEntries = dayEntries.filter(e=>e.coWrite);
     const col1Entries = dayEntries.filter(e=>!e.coWrite && e.author===n1);
     const col2Entries = dayEntries.filter(e=>!e.coWrite && e.author===n2);
-    // entries authored by someone outside the two current names still need a home
+    // entries authored by someone outside the two current names (e.g. an old
+    // name that was later renamed) still need a home — show them full-width
+    // instead of silently guessing a column, so they're never misattributed.
     const unmatched = dayEntries.filter(e=>!e.coWrite && e.author!==n1 && e.author!==n2);
 
     const headerLabel = dateKey ? formatDate(dateKey) : 'Chưa rõ ngày';
@@ -835,6 +839,7 @@ function renderBoard(){
       <div class="day-row" data-date="${dateKey}">
         <div class="day-row-header">${escapeHtml(headerLabel)}</div>
         ${coWriteEntries.map(e=>`<div class="cowrite-full">${renderCard(e)}</div>`).join('')}
+        ${unmatched.map(e=>`<div class="cowrite-full">${renderCard(e)}</div>`).join('')}
         <div class="day-row-grid">
           <div class="day-col">
             <div class="day-col-header">${escapeHtml(n1)}</div>
@@ -843,7 +848,6 @@ function renderBoard(){
           <div class="day-col">
             <div class="day-col-header">${escapeHtml(n2)}</div>
             ${col2Entries.length ? col2Entries.map(renderCard).join('') : '<div class="day-col-empty">Chưa viết hôm này</div>'}
-            ${unmatched.map(renderCard).join('')}
           </div>
         </div>
       </div>
@@ -1045,11 +1049,12 @@ if(isConfigured){
   onSnapshot(doc(db,'meta','names'), (snap)=>{
     if(snap.exists()){
       const v = snap.data();
-      if(document.activeElement !== name1) name1.value = v.name1 || '';
-      if(document.activeElement !== name2) name2.value = v.name2 || '';
+      if(document.activeElement !== name1) name1.value = v.name1 || DEFAULT_NAME1;
+      if(document.activeElement !== name2) name2.value = v.name2 || DEFAULT_NAME2;
       metaStartDate = v.startDate || null;
       renderViewerPicker();
       renderAnnivBar();
+      renderBoard();
     }else{
       renderAnnivBar();
     }
