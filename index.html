@@ -107,11 +107,26 @@
   }
   #addBtn:hover{ transform:translate(-1px,-1px); box-shadow:3px 3px 0 var(--wine-dark); }
   #addBtn:active{ transform:translate(1px,1px); box-shadow:0 0 0 var(--wine-dark); }
-  #board{ max-width:920px; margin:32px auto 0; padding:0 20px; column-count:2; column-gap:22px; }
-  @media (max-width:640px){ #board{ column-count:1; } }
+  #board{ max-width:1040px; margin:32px auto 0; padding:0 20px; }
+  .day-row{ margin-bottom:30px; }
+  .day-row-header{
+    font-family:'Space Mono', monospace; font-size:12px; letter-spacing:1px; color:var(--wine);
+    text-transform:uppercase; border-bottom:1px solid var(--line); padding-bottom:8px; margin-bottom:14px;
+  }
+  .day-row-grid{ display:grid; grid-template-columns:1fr 1fr; gap:20px; align-items:start; }
+  .day-col{ display:flex; flex-direction:column; gap:16px; }
+  .day-col-header{
+    font-family:'Caveat', cursive; font-weight:600; font-size:19px; color:var(--ink-soft);
+    border-bottom:1.5px dashed var(--gold); padding-bottom:4px; margin-bottom:2px;
+  }
+  .day-col-empty{
+    font-family:'Space Mono', monospace; font-size:11px; color:var(--ink-soft); opacity:0.4;
+    border:1px dashed var(--line); border-radius:4px; padding:14px; text-align:center;
+  }
+  .cowrite-full{ margin-bottom:16px; }
   .card{
-    break-inside:avoid; background:var(--paper-card); border:1px solid var(--line); border-radius:2px;
-    padding:20px 22px 18px; margin-bottom:22px; position:relative;
+    background:var(--paper-card); border:1px solid var(--line); border-radius:2px;
+    padding:20px 22px 18px; position:relative;
     box-shadow:0 1px 0 rgba(0,0,0,0.03), 0 6px 14px -10px rgba(46,38,32,0.35);
   }
   .tape{
@@ -265,6 +280,61 @@
     font-size:23px; color:var(--wine); margin-bottom:8px; line-height:1.3;
   }
   .celebrate-sub{ font-family:'Lora', serif; font-size:14px; color:var(--ink-soft); margin-bottom:20px; }
+
+  /* ===== Phone-friendly type scale ===== */
+  @media (max-width:640px){
+    body{ padding-bottom:60px; }
+    header{ padding:36px 16px 22px; }
+    header .eyebrow{ font-size:13px; }
+    h1{ font-size:32px; }
+    #names{ font-size:24px; }
+    #names input{ font-size:24px; width:120px; }
+    .anniv-bar{ gap:8px; }
+    .anniv-chip{ font-size:13px; padding:6px 12px; }
+    .anniv-set, .anniv-edit{ font-size:12.5px; padding:6px 12px; }
+    .anniv-bar input[type=date]{ font-size:13px; padding:6px 10px; }
+    .viewer-picker{ font-size:13px; gap:8px; }
+    .viewer-chip{ font-size:13px; padding:6px 13px; }
+    .viewer-picker-inline .viewer-chip{ font-size:15px; padding:9px 18px; }
+    .reaction-chip{ font-size:15px; padding:7px 11px; }
+    .toolbar{ padding:0 16px; }
+    .stat{ font-size:13px; }
+    #addBtn{ font-size:16px; padding:12px 20px; }
+    .btn-ghost, .btn-solid{ font-size:15px; padding:11px 18px; }
+    #board{ padding:0 16px; }
+    .day-row-grid{ grid-template-columns:1fr; gap:16px; }
+    .day-row-header{ font-size:13px; }
+    .day-col-header{ font-size:20px; }
+    .day-col-empty{ font-size:13px; padding:16px; }
+    .card{ padding:18px 18px 16px; }
+    .card-date{ font-size:12.5px; }
+    .card-author{ font-size:12.5px; padding:3px 9px; }
+    .card-title{ font-size:24px; }
+    .card-mood{ font-size:18px; }
+    .card-content{ font-size:16.5px; line-height:1.7; }
+    .card-del{ font-size:13px; padding:4px 8px; }
+    .cowrite-author{ font-size:12.5px; }
+    .cowrite-hint{ font-size:12.5px; }
+    .cowrite-add textarea{ font-size:16px; }
+    .empty{ padding:50px 16px; }
+    .empty .big{ font-size:26px; }
+    .modal{ padding:22px 20px 20px; }
+    .modal h2{ font-size:22px; }
+    .field label{ font-size:12.5px; }
+    .field input[type=text], .field input[type=date], .field textarea, .field select{ font-size:16px; padding:11px 12px; }
+    .err{ font-size:13px; }
+    .field-hint{ font-size:12.5px; }
+    .checkbox-label{ font-size:15px; }
+    .mood-opt{ width:42px; height:42px; font-size:20px; }
+    .photo-field .hint{ font-size:12.5px; }
+    .recap-cell{ font-size:12.5px; }
+    .recap-head{ font-size:12.5px; }
+    .recap-stat-line{ font-size:13px; }
+    .recap-person-name{ font-size:20px; }
+    .setup-warning{ font-size:13.5px; padding:14px 16px; }
+    .celebrate-title{ font-size:20px; }
+    .celebrate-sub{ font-size:15px; }
+  }
 </style>
 </head>
 <body>
@@ -714,14 +784,8 @@ function renderWeeklyRecap(){
   wrap.innerHTML = gridHtml + `<div class="recap-stats">${statsHtml}</div>`;
 }
 
-function renderBoard(){
-  countStat.textContent = entries.length + ' kỷ niệm đã lưu';
-  if(entries.length === 0){
-    board.innerHTML = '<div class="empty"><span class="big">Trang còn trống...</span>Bắt đầu bằng kỷ niệm đầu tiên của hai người nhé.</div>';
-    return;
-  }
-  const sorted = [...entries].sort((a,b)=> (b.date||'').localeCompare(a.date||''));
-  board.innerHTML = sorted.map(e => `
+function renderCard(e){
+  return `
     <div class="card" data-id="${e.id}">
       <div class="tape"></div>
       <button class="card-del" data-id="${e.id}" title="Xóa">xóa</button>
@@ -735,8 +799,61 @@ function renderBoard(){
       ${e.coWrite ? renderCoWriteContent(e) : `<div class="card-content">${escapeHtml(e.content)}</div>`}
       ${renderReactions(e)}
     </div>
-  `).join('');
+  `;
+}
 
+function renderBoard(){
+  countStat.textContent = entries.length + ' kỷ niệm đã lưu';
+  if(entries.length === 0){
+    board.innerHTML = '<div class="empty"><span class="big">Trang còn trống...</span>Bắt đầu bằng kỷ niệm đầu tiên của hai người nhé.</div>';
+    return;
+  }
+
+  const n1 = name1.value.trim() || 'Người thứ nhất';
+  const n2 = name2.value.trim() || 'Người thứ hai';
+
+  // group entries by date (unset dates land in their own trailing group)
+  const byDate = {};
+  entries.forEach(e=>{
+    const key = e.date || '';
+    if(!byDate[key]) byDate[key] = [];
+    byDate[key].push(e);
+  });
+  const sortedDates = Object.keys(byDate).sort((a,b)=> b.localeCompare(a));
+
+  board.innerHTML = sortedDates.map(dateKey=>{
+    const dayEntries = byDate[dateKey];
+    const coWriteEntries = dayEntries.filter(e=>e.coWrite);
+    const col1Entries = dayEntries.filter(e=>!e.coWrite && e.author===n1);
+    const col2Entries = dayEntries.filter(e=>!e.coWrite && e.author===n2);
+    // entries authored by someone outside the two current names still need a home
+    const unmatched = dayEntries.filter(e=>!e.coWrite && e.author!==n1 && e.author!==n2);
+
+    const headerLabel = dateKey ? formatDate(dateKey) : 'Chưa rõ ngày';
+
+    return `
+      <div class="day-row" data-date="${dateKey}">
+        <div class="day-row-header">${escapeHtml(headerLabel)}</div>
+        ${coWriteEntries.map(e=>`<div class="cowrite-full">${renderCard(e)}</div>`).join('')}
+        <div class="day-row-grid">
+          <div class="day-col">
+            <div class="day-col-header">${escapeHtml(n1)}</div>
+            ${col1Entries.length ? col1Entries.map(renderCard).join('') : '<div class="day-col-empty">Chưa viết hôm này</div>'}
+          </div>
+          <div class="day-col">
+            <div class="day-col-header">${escapeHtml(n2)}</div>
+            ${col2Entries.length ? col2Entries.map(renderCard).join('') : '<div class="day-col-empty">Chưa viết hôm này</div>'}
+            ${unmatched.map(renderCard).join('')}
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  attachBoardListeners();
+}
+
+function attachBoardListeners(){
   board.querySelectorAll('.cowrite-save').forEach(btn=>{
     btn.addEventListener('click', async (ev)=>{
       const id = ev.currentTarget.getAttribute('data-id');
